@@ -1,0 +1,11 @@
+# Python
+__pycache__/
+*.py[cod]
+
+# Downloaded audio - do not version large media
+downloads/
+*.mp3
+
+# Microsoft Word temp files
+~WR*.tmp
+~$*.doc*
