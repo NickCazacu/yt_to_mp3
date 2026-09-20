@@ -1,2 +1,59 @@
 # yt_to_mp3
-Lucrari de laborator la disciplina Proiectarea Sistemelor Informationale
+
+Lucrari de laborator la disciplina Proiectarea Sistemelor Informationale.
+
+Скачивает аудиодорожку с YouTube и конвертирует её в MP3 с тегами.
+
+## Установка
+
+```
+pip install yt-dlp
+winget install Gyan.FFmpeg     # ffmpeg должен быть в PATH
+```
+
+## Графический интерфейс
+
+```
+python yt_to_mp3_gui.py
+```
+
+Окно на tkinter (входит в стандартную поставку Python, дополнительных
+зависимостей нет):
+
+- поле для нескольких ссылок — по одной в строке;
+- выбор папки назначения и кнопка «Открыть»;
+- битрейт 64…320 kbps и флажок «Скачать плейлист целиком»;
+- индикатор прогресса со скоростью и оставшимся временем, кнопка «Отмена»;
+- журнал с выделением успешных и неудавшихся загрузок.
+
+Скачивание идёт в фоновом потоке, поэтому окно не подвисает; прогресс
+передаётся в интерфейс через очередь (виджеты Tk можно трогать только из
+главного потока).
+
+## Командная строка
+
+```
+python yt_to_mp3.py "https://www.youtube.com/watch?v=..."
+python yt_to_mp3.py URL1 URL2 -o D:/Music -q 320
+python yt_to_mp3.py "https://www.youtube.com/playlist?list=..." --playlist
+```
+
+| Флаг | Значение | По умолчанию |
+| --- | --- | --- |
+| `-o`, `--output` | папка назначения | `./downloads` |
+| `-q`, `--quality` | битрейт mp3: 64, 128, 192, 256, 320 | `192` |
+| `--playlist` | скачать весь плейлист, а не одно видео | выкл. |
+
+## Структура
+
+| Файл | Назначение |
+| --- | --- |
+| `yt_to_mp3.py` | логика скачивания + интерфейс командной строки |
+| `yt_to_mp3_gui.py` | окно на tkinter поверх той же логики |
+| `test_yt_to_mp3.py` | модульные тесты (без сети и без ffmpeg) |
+
+## Тесты
+
+```
+python -m unittest test_yt_to_mp3 -v
+```

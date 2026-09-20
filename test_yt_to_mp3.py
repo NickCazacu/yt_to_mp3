@@ -275,5 +275,42 @@ class TestMain(unittest.TestCase):
         self.assertIn("bad-url", buf.getvalue())
 
 
+@patch("yt_to_mp3.yt_dlp.YoutubeDL")
+class TestFrontEndHooks(unittest.TestCase):
+    """The GUI (yt_to_mp3_gui.py) swaps in its own progress hook and logger."""
+
+    def test_custom_hook_replaces_console_reporter(self, _mock_cls):
+        def my_hook(d):
+            pass
+        opts = yt_to_mp3.build_options("out", 192, False, my_hook)
+        self.assertEqual(opts["progress_hooks"], [my_hook])
+
+    def test_download_forwards_hook_to_options(self, mock_cls):
+        make_ydl_mock(mock_cls)
+        def my_hook(d):
+            pass
+        with redirect_stdout(io.StringIO()):
+            yt_to_mp3.download(["u"], "out", 192, False, hook=my_hook)
+        self.assertEqual(mock_cls.call_args[0][0]["progress_hooks"], [my_hook])
+
+    def test_custom_log_captures_messages_instead_of_stdout(self, mock_cls):
+        ydl = make_ydl_mock(mock_cls)
+        ydl.extract_info.return_value = {"title": "Track"}
+        lines = []
+        buf = io.StringIO()
+        with redirect_stdout(buf):
+            yt_to_mp3.download(["u"], "out", 192, False, log=lines.append)
+        self.assertEqual(buf.getvalue(), "")
+        self.assertTrue(any("Track.mp3" in line for line in lines))
+
+    def test_custom_log_receives_failures(self, mock_cls):
+        ydl = make_ydl_mock(mock_cls)
+        ydl.extract_info.side_effect = Exception("Private video")
+        lines = []
+        failed = yt_to_mp3.download(["bad"], "out", 192, False, log=lines.append)
+        self.assertEqual(failed, ["bad"])
+        self.assertTrue(any("Private video" in line for line in lines))
+
+
 if __name__ == "__main__":
     unittest.main(verbosity=2)

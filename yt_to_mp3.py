@@ -29,14 +29,18 @@ def progress_hook(d):
         print("\r  download complete, converting to mp3...        ")
 
 
-def build_options(outdir, quality, keep_playlist):
+def build_options(outdir, quality, keep_playlist, hook=None):
+    """Build the yt-dlp options dict.
+
+    ``hook`` replaces the console progress reporter; the GUI passes its own.
+    """
     return {
         "format": "bestaudio/best",
         "outtmpl": f"{outdir}/%(title)s.%(ext)s",
         "noplaylist": not keep_playlist,
         "quiet": True,
         "no_warnings": True,
-        "progress_hooks": [progress_hook],
+        "progress_hooks": [hook or progress_hook],
         "postprocessors": [
             {
                 "key": "FFmpegExtractAudio",
@@ -49,18 +53,23 @@ def build_options(outdir, quality, keep_playlist):
     }
 
 
-def download(urls, outdir, quality, keep_playlist):
-    opts = build_options(outdir, quality, keep_playlist)
+def download(urls, outdir, quality, keep_playlist, hook=None, log=print):
+    """Download every url as mp3 and return the list of urls that failed.
+
+    ``hook`` and ``log`` let a front-end (see yt_to_mp3_gui.py) capture the
+    progress callbacks and the messages instead of writing to the console.
+    """
+    opts = build_options(outdir, quality, keep_playlist, hook)
     failed = []
     with yt_dlp.YoutubeDL(opts) as ydl:
         for url in urls:
-            print(f"\n> {url}")
+            log(f"\n> {url}")
             try:
                 info = ydl.extract_info(url, download=True)
                 title = info.get("title", "unknown")
-                print(f"  saved: {title}.mp3")
+                log(f"  saved: {title}.mp3")
             except Exception as e:  # noqa: BLE001 - report and continue
-                print(f"  FAILED: {e}")
+                log(f"  FAILED: {e}")
                 failed.append(url)
     return failed
 
