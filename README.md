@@ -1,36 +1,43 @@
 # yt_to_mp3
 
-Lucrari de laborator la disciplina Proiectarea Sistemelor Informationale.
+Downloads the audio track from YouTube and converts it to MP3 with tags.
 
-Скачивает аудиодорожку с YouTube и конвертирует её в MP3 с тегами.
-
-## Установка
+## Installation
 
 ```
 pip install yt-dlp
-winget install Gyan.FFmpeg     # ffmpeg должен быть в PATH
+winget install Gyan.FFmpeg     # ffmpeg must be on PATH
 ```
 
-## Графический интерфейс
+## Graphical interface
 
 ```
 python yt_to_mp3_gui.py
 ```
 
-Окно на tkinter (входит в стандартную поставку Python, дополнительных
-зависимостей нет):
+A tkinter window (part of the Python standard library, no extra
+dependencies):
 
-- поле для нескольких ссылок — по одной в строке;
-- выбор папки назначения и кнопка «Открыть»;
-- битрейт 64…320 kbps и флажок «Скачать плейлист целиком»;
-- индикатор прогресса со скоростью и оставшимся временем, кнопка «Отмена»;
-- журнал с выделением успешных и неудавшихся загрузок.
+- a language selector in the header — Russian or English, switched live and
+  remembered for the next run;
+- a field for several links — one per line;
+- destination folder picker and an "Open" button;
+- bitrate from 64 to 320 kbps and a "Download the whole playlist" checkbox —
+  a playlist is saved into its own subfolder named after the playlist;
+- progress bar with speed and remaining time, plus a "Cancel" button;
+- a log that highlights successful and failed downloads.
 
-Скачивание идёт в фоновом потоке, поэтому окно не подвисает; прогресс
-передаётся в интерфейс через очередь (виджеты Tk можно трогать только из
-главного потока).
+Downloading runs on a background thread, so the window never freezes;
+progress reaches the interface through a queue (Tk widgets may only be
+touched from the main thread).
 
-## Командная строка
+The chosen language is stored in a small JSON file outside the project:
+`%APPDATA%\yt_to_mp3\settings.json` on Windows,
+`~/.config/yt_to_mp3/settings.json` on Linux,
+`~/Library/Application Support/yt_to_mp3/settings.json` on macOS. Deleting it
+simply resets the app to Russian.
+
+## Command line
 
 ```
 python yt_to_mp3.py "https://www.youtube.com/watch?v=..."
@@ -38,22 +45,23 @@ python yt_to_mp3.py URL1 URL2 -o D:/Music -q 320
 python yt_to_mp3.py "https://www.youtube.com/playlist?list=..." --playlist
 ```
 
-| Флаг | Значение | По умолчанию |
+| Flag | Meaning | Default |
 | --- | --- | --- |
-| `-o`, `--output` | папка назначения | `./downloads` |
-| `-q`, `--quality` | битрейт mp3: 64, 128, 192, 256, 320 | `192` |
-| `--playlist` | скачать весь плейлист, а не одно видео | выкл. |
+| `-o`, `--output` | destination folder | `./downloads` |
+| `-q`, `--quality` | mp3 bitrate: 64, 128, 192, 256, 320 | `192` |
+| `--playlist` | download the whole playlist instead of a single video, into a subfolder named after it | off |
 
-## Структура
+## Layout
 
-| Файл | Назначение |
+| File | Purpose |
 | --- | --- |
-| `yt_to_mp3.py` | логика скачивания + интерфейс командной строки |
-| `yt_to_mp3_gui.py` | окно на tkinter поверх той же логики |
-| `test_yt_to_mp3.py` | модульные тесты (без сети и без ffmpeg) |
+| `yt_to_mp3.py` | download logic + command-line interface |
+| `yt_to_mp3_gui.py` | tkinter window on top of the same logic |
+| `test_yt_to_mp3.py` | unit tests for the download logic (no network, no ffmpeg) |
+| `test_yt_to_mp3_gui.py` | unit tests for the translations and settings file (no window) |
 
-## Тесты
+## Tests
 
 ```
-python -m unittest test_yt_to_mp3 -v
+python -m unittest discover -v
 ```

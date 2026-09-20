@@ -8,6 +8,7 @@ mock in every test that reaches it.
 """
 
 import io
+import os
 import unittest
 from contextlib import redirect_stdout
 from unittest.mock import MagicMock, patch
@@ -38,6 +39,15 @@ class TestBuildOptions(unittest.TestCase):
         opts = yt_to_mp3.build_options(r"C:\Users\Admin\Music", 192, False)
         self.assertTrue(opts["outtmpl"].startswith(r"C:\Users\Admin\Music"))
         self.assertTrue(opts["outtmpl"].endswith("%(title)s.%(ext)s"))
+
+    def test_playlist_adds_a_folder_component(self):
+        opts = yt_to_mp3.build_options("D:/Music", 192, True)
+        self.assertEqual(opts["outtmpl"],
+                         "D:/Music/%(playlist_title|)s/%(title)s.%(ext)s")
+
+    def test_single_video_has_no_folder_component(self):
+        opts = yt_to_mp3.build_options("D:/Music", 192, False)
+        self.assertNotIn("playlist_title", opts["outtmpl"])
 
     def test_noplaylist_is_inverted_flag(self):
         # --playlist absent -> single video only
@@ -71,6 +81,37 @@ class TestBuildOptions(unittest.TestCase):
         opts = yt_to_mp3.build_options("out", 192, False)
         self.assertTrue(opts["quiet"])
         self.assertTrue(opts["no_warnings"])
+
+
+class TestOutputTemplate(unittest.TestCase):
+    """Run the template through the real yt-dlp expander (no network, no
+    ffmpeg: prepare_filename only formats a dict)."""
+
+    def render(self, info, keep_playlist):
+        opts = yt_to_mp3.build_options("out", 192, keep_playlist)
+        with yt_to_mp3.yt_dlp.YoutubeDL({"outtmpl": opts["outtmpl"],
+                                         "quiet": True}) as ydl:
+            return ydl.prepare_filename(info)
+
+    def test_playlist_track_goes_into_a_named_subfolder(self):
+        path = self.render({"title": "Song", "ext": "webm",
+                            "playlist_title": "Best of 2026"}, True)
+        self.assertIn(os.path.join("out", "Best of 2026", "Song.webm"), path)
+
+    def test_plain_video_stays_in_the_output_folder(self):
+        path = self.render({"title": "Song", "ext": "webm"}, False)
+        self.assertEqual(path, os.path.join("out", "Song.webm"))
+
+    def test_playlist_flag_on_a_single_video_creates_no_empty_folder(self):
+        # --playlist given but the url turns out to be one video: the "|"
+        # fallback must collapse, not leave an "NA" directory behind
+        path = self.render({"title": "Song", "ext": "webm"}, True)
+        self.assertEqual(path, os.path.join("out", "Song.webm"))
+
+    def test_slashes_in_playlist_name_do_not_nest_folders(self):
+        path = self.render({"title": "Song", "ext": "webm",
+                            "playlist_title": "Rock / Metal"}, True)
+        self.assertEqual(len(path.split(os.sep)), 3)  # out / playlist / file
 
 
 class TestProgressHook(unittest.TestCase):
@@ -129,7 +170,9 @@ class TestDownload(unittest.TestCase):
         with redirect_stdout(io.StringIO()):
             yt_to_mp3.download(["u1"], "MyDir", 320, True)
         opts = mock_cls.call_args[0][0]
-        self.assertEqual(opts["outtmpl"], "MyDir/%(title)s.%(ext)s")
+        # called with keep_playlist=True -> playlist subfolder template
+        self.assertEqual(opts["outtmpl"],
+                         "MyDir/%(playlist_title|)s/%(title)s.%(ext)s")
         self.assertFalse(opts["noplaylist"])
         self.assertEqual(opts["postprocessors"][0]["preferredquality"], "320")
 

@@ -8,6 +8,9 @@ Usage:
     python yt_to_mp3.py "https://www.youtube.com/watch?v=..."
     python yt_to_mp3.py URL1 URL2 -o D:/Music -q 320
     python yt_to_mp3.py "https://www.youtube.com/playlist?list=..." --playlist
+
+With --playlist the tracks are saved into a subfolder named after the
+playlist; a single video is saved directly into the output folder.
 """
 
 import argparse
@@ -34,9 +37,14 @@ def build_options(outdir, quality, keep_playlist, hook=None):
 
     ``hook`` replaces the console progress reporter; the GUI passes its own.
     """
+    # A playlist lands in its own subfolder named after the playlist. The "|"
+    # fallback leaves that component empty for a plain video, so a single file
+    # still goes straight into outdir.
+    name = "%(playlist_title|)s/%(title)s.%(ext)s" if keep_playlist \
+        else "%(title)s.%(ext)s"
     return {
         "format": "bestaudio/best",
-        "outtmpl": f"{outdir}/%(title)s.%(ext)s",
+        "outtmpl": f"{outdir}/{name}",
         "noplaylist": not keep_playlist,
         "quiet": True,
         "no_warnings": True,
